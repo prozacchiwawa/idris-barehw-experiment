@@ -4,3 +4,4 @@ main.c
 *~
 *.ibc
 kernel.elf
+testkernel.elf
