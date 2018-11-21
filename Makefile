@@ -3,8 +3,13 @@ COPTS=\
 	-Irts \
 	-DIDRIS_TARGET_OS='"IdrOS"' \
 	-DIDRIS_TARGET_TRIPLE='"x86_64-unknown-IdrOS"'
-
 LIBS=-L. -lrts -Lnewlib/newlib -lc -lm -lrts
+
+OBJS= \
+	$(patsubst rts/%.c,rts/%.o,$(wildcard rts/*.c)) \
+	$(patsubst lib/%.c,lib/%.o,$(wildcard lib/*.c)) \
+	$(patsubst lib/arch/%.s,lib/arch/%.o,$(wildcard lib/arch/*.s)) \
+	$(patsubst lib/arch/%.c,lib/arch/%.o,$(wildcard lib/arch/*.c))
 
 .s.o:
 	$(CC) -g -c -o $@ $(COPTS) $<
@@ -21,7 +26,7 @@ newlib/newlib/libc.a:
 clean:
 	rm -rf *.o rts/*.o lib/*.o *.a
 
-librts.a: $(patsubst rts/%.c,rts/%.o,$(wildcard rts/*.c)) $(patsubst lib/%.s,lib/%.o,$(wildcard lib/*.s)) $(patsubst lib/%.c,lib/%.o,$(wildcard lib/*.c))
+librts.a: $(OBJS)
 	rm -f $@
 	ar cq $@ $^
 	ranlib $@

@@ -1,3 +1,4 @@
+#if 0
 // C-Side of the Idris network library
 // (C) Simon Fowler, 2014
 // MIT Licensed. Have fun!
@@ -349,3 +350,4 @@ int idrnet_geteagain() {
     return EAGAIN;
 }
 
+#endif

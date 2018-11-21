@@ -7,7 +7,9 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <time.h>
+#if 0
 #include <dirent.h>
+#endif
 #include <unistd.h>
 
 #ifdef _WIN32
@@ -96,6 +98,7 @@ VAL fileStatusTime(void* h) {
     }
 }
 
+#if 0
 typedef struct {
     DIR* dirptr;
     int error;
@@ -147,6 +150,7 @@ int idris_chdir(char* dname) {
 int idris_dirError(void *dptr) {
     return ((DirInfo*)dptr)->error;
 }
+#endif
 
 int idris_writeStr(void* h, char* str) {
     FILE* f = (FILE*)h;
