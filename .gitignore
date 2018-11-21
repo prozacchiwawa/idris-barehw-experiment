@@ -1,0 +1,6 @@
+*.a
+main.c
+*.o
+*~
+*.ibc
+kernel.elf
