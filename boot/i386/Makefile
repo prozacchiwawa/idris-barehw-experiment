@@ -1,4 +1,4 @@
-OBJS=boot-i386.o cpuid.o extfun.o longmode.o
+OBJS=boot-i386.o cpuid.o extfun.o longmode.o con32.o
 CC=clang -m32 -ffreestanding -nostdinc -nostdlib -target i386-elf -fPIC
 
 all: boot-i386

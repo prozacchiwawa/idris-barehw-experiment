@@ -1,18 +1,20 @@
 #include "boot.h"
+#include "con32.h"
 
-const int ERRTEXTATTR = 0x1b00;
+con32 c;
 
 void halt(const char *res) {
-    const char *ptr = res;
-    unsigned short *outptr = ((unsigned short*)0xb8000);
-    while (*ptr) {
-        *outptr++ = *ptr | ERRTEXTATTR;
-        ptr++;
-    }
+    write_con_str(&c, res);
     while (1) {}
 }
 
 int main(int argc, char **argv) {
+    init_con(&c);
+    write_con_str(&c, "init ");
+    write_con_int(&c, argc);
+    write_con_str(&c, " argv ");
+    write_con_ptr(&c, argv);
+    
     int has_cpuid_ = has_cpuid(0);
     if (!has_cpuid_) {
         halt("No CPUID");

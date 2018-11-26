@@ -5,3 +5,4 @@ main.c
 *.ibc
 kernel.elf
 testkernel.elf
+boot-i386
