@@ -1,7 +1,11 @@
+.intel_syntax noprefix
+
     .text
     .globl _start
     .globl main
 _start:
+    push ebx
+    push 0
     jmp main
 
     .align 8

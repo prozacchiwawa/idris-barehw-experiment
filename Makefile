@@ -17,7 +17,10 @@ OBJS= \
 .c.o:
 	$(CC) -g -c -o $@ $(COPTS) $<
 
-all: kernel.elf
+all: kernel.elf boot-i386
+
+boot-i386:
+	$(MAKE) -C boot/i386
 
 newlib/newlib/libc.a:
 	cd newlib/newlib && CC="clang -isystem `pwd`/include -isystem `pwd`/../../include -ffreestanding -nostdinc -nostdlib -target x86_64-elf -fPIC" ./configure --target=x86_64-elf

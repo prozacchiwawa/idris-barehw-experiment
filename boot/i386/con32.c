@@ -10,8 +10,8 @@ void init_con(con32 *c) {
     c->base = (void*)0xb8000;
     c->attr = 0x1b;
     c->r = c->c = 0;
-    c->rows = 80;
-    c->cols = 25;
+    c->rows = 25;
+    c->cols = 80;
 }
 
 void write_con(con32 *c, char ch) {
