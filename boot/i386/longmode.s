@@ -20,8 +20,9 @@ NoLongmode:
     ret
 
     .globl go64
-go64: // Fastcall, call address in eax
+go64: // Fastcall, struct is at eax
     push eax
+    mov esi, [eax+4]    // ESI = start of module
     
     mov eax, cr0                                   // Set the A-register to control register 0.
     and eax, 01111111111111111111111111111111b     // Clear the PG-bit, which is bit 31.
@@ -51,6 +52,15 @@ go64: // Fastcall, call address in eax
     mov DWORD ptr [edi], 0x4003      // Set the uint32_t at the destination index to 0x4003.
     add edi, 0x1000              // Add 0x1000 to the destination index.
 
+    mov ebx, 0x00000003          // Set the B-register to 0x00000003.
+    mov ecx, 512                 // Set the C-register to 512.
+ 
+.SetEntry:
+    mov dword ptr [edi], ebx         // Set the uint32_t at the destination index to the B-register.
+    add ebx, 0x1000              // Add 0x1000 to the B-register.
+    add edi, 8                   // Add eight to the destination index.
+    loop .SetEntry               // Set the next entry.
+
     // Set long mode
     mov eax, cr4                 // Set the A-register to control register 4.
     or eax, 1 << 5               // Set the PAE-bit, which is the 6th bit (bit 5).
@@ -62,10 +72,11 @@ go64: // Fastcall, call address in eax
     mov cr0, eax                 // Set control register 0 to the A-register.
 
     pop eax
+    mov eax, dword ptr [eax+12]
     
     //
     lgdt [.Pointer]              // Load the 64-bit global descriptor table.
-    jmp [eax]                    // Set the code segment and enter 64-bit long mode.
+    ljmp [eax]                   // Set the code segment and enter 64-bit long mode.
 
 GDT64:                           // Global Descriptor Table (64-bit).
 .Null:

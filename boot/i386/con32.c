@@ -1,8 +1,14 @@
 #include "con32.h"
 
-void memmove_con(unsigned short *target, unsigned short *src, int elts) {
+void memcpy_con(unsigned short *target, unsigned short *src, int elts) {
     while (elts--) {
         *target++ = *src++;
+    }
+}
+
+void memset_con(unsigned short *target, int fill, int elts) {
+    while (elts--) {
+        *target++ = fill;
     }
 }
 
@@ -21,10 +27,17 @@ void write_con(con32 *c, char ch) {
     } else if (ch == 10) {
         c->r++;
         while (c->r >= c->rows) {
-            memmove_con(
-                c->base + c->rows,
-                c->base,
-                (c->rows - 1) * c->cols
+            for (int i = 0; i < c->rows - 1; i++) {
+                memcpy_con(
+                    c->base + (c->cols * i),
+                    c->base + (c->cols * (i + 1)),
+                    c->cols
+                    );
+            }
+            memset_con(
+                c->base + (c->cols * (c->rows - 1)),
+                c->attr << 8,
+                c->cols
                 );
             c->r--;
         }
@@ -54,7 +67,7 @@ void write_con_str(con32 *c, const char *str) {
 }
 
 const char *digits = "0123456789abcdef";
-void write_con_int(con32 *c, long i) {
+void write_con_int(con32 *c, uint64_t i) {
     char writebuf[100];
     int writeoff = 99;
     writebuf[writeoff] = 0;

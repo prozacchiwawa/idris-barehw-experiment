@@ -1,9 +1,7 @@
 #ifndef _MULTIBOOT_H_
 #define _MULTIBOOT_H_
 
-typedef unsigned char uint8_t;
-typedef unsigned short uint16_t;
-typedef unsigned int uint32_t;
+#include "boottypes.h"
 
 #define MEM_FLAG 1
 #define BOOTDEV_FLAG 2
@@ -25,6 +23,19 @@ typedef struct _mb_mod {
     uint32_t mod_args;
     uint32_t mod_reserved;
 } mb_mod;
+
+#define MULTIBOOT_MEMORY_AVAILABLE              1
+#define MULTIBOOT_MEMORY_RESERVED               2
+#define MULTIBOOT_MEMORY_ACPI_RECLAIMABLE       3
+#define MULTIBOOT_MEMORY_NVS                    4
+#define MULTIBOOT_MEMORY_BADRAM                 5
+
+typedef struct _mb_mmap {
+    uint32_t mmap_size;
+    uint64_t mmap_addr;
+    uint64_t mmap_len;
+    uint32_t mmap_type;
+} __attribute__((packed)) mb_mmap;
 
 typedef struct _mb_root {
     uint32_t flags;
@@ -56,5 +67,8 @@ typedef struct _mb_root {
     uint8_t framebuffer_type;
     const char color_info[1];
 } mb_root;
+
+const mb_mmap *getFirstMmapEntry(const mb_root *root);
+const mb_mmap *getNextMmapEntry(const mb_root *root, const mb_mmap *mptr);
 
 #endif//_MULTIBOOT_H_
