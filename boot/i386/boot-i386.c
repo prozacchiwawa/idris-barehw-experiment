@@ -4,6 +4,11 @@
 #include "elf.h"
 #include "longmode.h"
 
+#define MEGABYTE (1024 * 1024)
+uint32_t max(uint32_t a, uint32_t b) {
+    return a > b ? a : b;
+}
+
 con32 c;
 volatile int continue_64 = 0;
 
@@ -141,24 +146,22 @@ int main(int argc, char **argv) {
                 Elf64_Phdr *phdr = (Elf64_Phdr*)phdrAddr;
                 write_con_ptr(&c, phdr);
                 write_con_str(&c, "\r\n");
-                if (0) {
-                    write_con_str(&c, "phdr ");
-                    write_con_int(&c, phdr->p_type);
-                    write_con_str(&c, " vaddr ");
-                    write_con_int(&c, phdr->p_vaddr);
-                    write_con_str(&c, " memsz ");
-                    write_con_int(&c, phdr->p_memsz);
-                    write_con_str(&c, "\r\n");
-                    if (phdr->p_vaddr <= entryPointVaddr &&
-                        phdr->p_vaddr + phdr->p_memsz > entryPointVaddr &&
-                        phdr->p_type == PT_LOAD) {
-                        mod64.pentry = 
-                            mods[i].mod_start +
-                            phdr->p_paddr + (entryPointVaddr - phdr->p_vaddr);
-                        mod64.start = mods[i].mod_start;
-                        mod64.length = mods[i].mod_end - mods[i].mod_start;
+                write_con_str(&c, "phdr ");
+                write_con_int(&c, phdr->p_type);
+                write_con_str(&c, " vaddr ");
+                write_con_int(&c, phdr->p_vaddr);
+                write_con_str(&c, " memsz ");
+                write_con_int(&c, phdr->p_memsz);
+                write_con_str(&c, "\r\n");
+                if (phdr->p_vaddr <= entryPointVaddr &&
+                    phdr->p_vaddr + phdr->p_memsz > entryPointVaddr &&
+                    phdr->p_type == PT_LOAD) {
+                    mod64.pentry = 
+                        mods[i].mod_start +
+                        phdr->p_paddr + (entryPointVaddr - phdr->p_vaddr);
+                    mod64.start = mods[i].mod_start;
+                    mod64.length = mods[i].mod_end - mods[i].mod_start;
                         break;
-                    }
                 }
             }
         }
@@ -168,16 +171,10 @@ int main(int argc, char **argv) {
         halt("Could not find kernel module");
     }
 
-    halt("no");
-            
-    int ct = 0;
-    while (!continue_64) {
-        ct++;
-    }
-
     // Find a boot slab area
     for (int i = 0; i < mmap_current; i++) {
-        if (mmap_entries[i].mmap_len >= mod64.length) {
+        uint32_t max_needed_address = max(mmap_entries[i].mmap_addr, MEGABYTE) + mod64.length;
+        if (mmap_entries[i].mmap_addr + mmap_entries[i].mmap_len >= max_needed_address) {
             mod64.mstart = mmap_entries[i].mmap_addr;
             mod64.pentry = mod64.pentry - mod64.start + mod64.mstart;
             write_con_str(&c, "use memory at ");
@@ -192,6 +189,11 @@ int main(int argc, char **argv) {
     
     if (!mod64.start) {
         halt("Could not find entry point in any PT_LOAD program header");
+    }
+
+    int ct = 0;
+    while (!continue_64) {
+        ct++;
     }
 
     go64(&mod64);
