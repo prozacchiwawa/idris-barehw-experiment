@@ -10,7 +10,7 @@ clean:
 	$(CC) -c -g -o $@ $<
 
 .c.o:
-	$(CC) -c -g -o $@ $<
+	$(CC) -c -g -xc++ -std=c++11 -o $@ $<
 
 testkernel.elf: testkernel.s
 	clang -m64 -static -Wl,-e,0x1000 -Wl,-Tkernel.lds -Wl,-N -g -nostdlib -target x86_64-elf -fPIC -o testkernel.elf testkernel.s

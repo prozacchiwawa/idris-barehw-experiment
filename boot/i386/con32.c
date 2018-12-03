@@ -13,7 +13,7 @@ void memset_con(unsigned short *target, int fill, int elts) {
 }
 
 void init_con(con32 *c) {
-    c->base = (void*)0xb8000;
+    c->base = (unsigned short*)0xb8000;
     c->attr = 0x1b;
     c->r = c->c = 0;
     c->rows = 25;
@@ -84,4 +84,15 @@ void write_con_int(con32 *c, uint64_t i) {
 void write_con_ptr(con32 *c, const void *p) {
     write_con_str(c, "$");
     write_con_int(c, (long)p);
+}
+
+void write_con_one(con32 *c, const char *str) {
+    write_con_str(c, str);
+}
+
+void write_con_one(con32 *c, uint64_t i) {
+    write_con_int(c, i);
+}
+
+void write_con(con32 *c) {
 }
