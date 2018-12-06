@@ -22,7 +22,7 @@ extern uint32_t _start;
 extern uint32_t _end;
 
 con32 c;
-volatile int continue_64 = 0;
+volatile int continue_64 = 1;
 
 const char *flags[] = {
     "mem",
@@ -87,10 +87,10 @@ uint64_t alloc_page(uint64_t *bitmap_dir) {
     
     write_con(&c, "alloc page ", allocated, "\r\n");
     
-    return allocated;
+    return allocated * PAGE_SIZE;
 }
 
-#define RWXKERNEL 7
+#define RWXKERNEL 3
 #define PAGE_ADDR(x) ((x) & ~0xfff)
 const uint64_t PML4_SHIFT = 12 + 9 + 9 + 9;
 const uint64_t PML3_SHIFT = 12 + 9 + 9;
@@ -125,7 +125,7 @@ uint64_t map_page(uint64_t pml4, uint64_t *bitmap_dir, uint64_t addr) {
 }
 
 uint64_t find_bitmap_dir(const mb_mmap *mmap_entries, int mmap_current) {
-    uint64_t max_page = 0xfee00000 - PAGE_SIZE;
+    uint64_t max_page = 0x80000000 - PAGE_SIZE;
     uint64_t bitmap_dir_page = 0;
     
     for (int i = mmap_current - 1; i >= 0; i--) {
@@ -133,8 +133,8 @@ uint64_t find_bitmap_dir(const mb_mmap *mmap_entries, int mmap_current) {
         
         if (max_page < max_addr) {
             // Crawl the space, allocating
-            uint32_t used_pages = 1;
-            uint32_t use_page = min(max_page, max_addr - PAGE_SIZE);
+            uint64_t used_pages = 1;
+            uint64_t use_page = min(max_page, max_addr - PAGE_SIZE);
             
             write_con(&c, "use_page ", use_page, "\r\n");
             bitmap_dir_page = use_page;
@@ -252,7 +252,7 @@ int main(int argc, char **argv) {
     write_con(&c, "&continue_64 ", &continue_64, "\r\n");
 
     mod_64 mod64 = { };
-    mod64.entry[0] = 8;
+    mod64.entry[4] = mod64.entry[8] = 8;
 
     if (bootinfo->flags & MODS_FLAG) {
         mb_mod *mods = (mb_mod*)bootinfo->mods_addr;
@@ -311,7 +311,7 @@ int main(int argc, char **argv) {
                 (&c,
                  "use memory at ", mmap_entries[i].mmap_addr, " start ",
                  mod64.pentry, "\r\n");
-            memcpy(&mod64.entry[2], &mod64.pentry, sizeof(mod64.pentry));
+            memcpy(mod64.entry, &mod64.start, sizeof(mod64.start));
             memcpy((void*)mmap_entries[i].mmap_addr, (void*)mod64.start, mod64.length);
         }
     }
@@ -354,6 +354,11 @@ int main(int argc, char **argv) {
     for (int i = 0; i < bitmap_space; i++) {
         write_con(&c, "bitmap ", i, " = ", bitmap_dir[i], "\r\n");
     }
+
+    // Mark the first megabyte reserved
+    for (uint32_t addr = 0; addr < MEGABYTE; addr += PAGE_SIZE) {
+        set_alloc_page(bitmap_dir, addr);
+    }
     
     // Mark the kernel space in the bitmap
     for (uint32_t kernel_addr = mod64.start;
@@ -371,6 +376,11 @@ int main(int argc, char **argv) {
     
     // We have a page dir root
     uint64_t pml4 = alloc_page(bitmap_dir);
+
+    // Map the first Megabyte
+    for (uint32_t addr = 0; addr < MEGABYTE; addr += PAGE_SIZE) {
+        map_page(pml4, bitmap_dir, addr);
+    }
     
     // Map the kernel space we set aside
     for (uint32_t kernel_addr = mod64.start;
@@ -385,7 +395,7 @@ int main(int argc, char **argv) {
          boot_addr += PAGE_SIZE) {
         map_page(pml4, bitmap_dir, boot_addr);
     }
-    
+
     mod64.alloc_bitmap = bitmap_dir_page;
     mod64.pml4 = pml4;
     if (!mod64.pml4) {
