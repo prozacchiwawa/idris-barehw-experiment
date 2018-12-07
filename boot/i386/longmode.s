@@ -26,17 +26,22 @@ go64: // Fastcall, struct is at ecx
     mov cr0, eax                                   // Set control register 0 to the A-register.
 
     // Preload the jump address
-    lea ebx, dword ptr [ecx+32]
+    lea ebx, dword ptr [ecx + 32]
+    // New Stack Start
+    mov edx, dword ptr [ecx + 12]
+    add edx, dword ptr [ecx + 16]
+    sub edx, 16
     
-    // Set long mode
+    // Set PAE mode
     mov eax, cr4                 // Set the A-register to control register 4.
     or eax, 1 << 5               // Set the PAE-bit, which is the 6th bit (bit 5).
     mov cr4, eax                 // Set control register 4 to the A-register.
 
     // Reload cr3
-    mov eax, [ecx + 16]
+    mov eax, [ecx + 20]
     mov cr3, eax
 
+    // Turn on long mode
     mov ecx, 0xC0000080          // Set the C-register to 0xC0000080, which is the EFER MSR.
     rdmsr                        // Read from the model-specific register.
     or eax, 1 << 8               // Set the LM-bit which is the 9th bit (bit 8).
@@ -49,6 +54,9 @@ go64: // Fastcall, struct is at ecx
 
     // Load up the GDT
     lgdt [.Pointer]              // Load the 64-bit global descriptor table.
+
+    mov esp, edx                 // Load the new stack
+
     ljmp [ebx]                   // Set the code segment and enter 64-bit long mode.
 
 GDT64:                           // Global Descriptor Table (64-bit).

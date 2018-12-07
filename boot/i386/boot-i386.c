@@ -9,6 +9,7 @@
 #define MEGABYTE (1024 * 1024)
 #define APIC 0xfee00000
 #define PAGE_SIZE 4096
+#define KERNEL_ADDR (8 * MEGABYTE)
 
 uint32_t min(uint32_t a, uint32_t b) {
     return a < b ? a : b;
@@ -63,13 +64,9 @@ uint64_t alloc_page(uint64_t *bitmap_dir) {
 
     while (bitmap_dir[dir_idx+1]) { dir_idx++; }
 
-    write_con(&c, "bitmap_dir_idx ", dir_idx, "\r\n");
-    
     while (!allocated) {
         uint8_t *dir_page_start = (uint8_t *)bitmap_dir[dir_idx];
         uint8_t *dir_page = dir_page_start + PAGE_SIZE - 1;
-
-        write_con(&c, "dir_page_start ", dir_page_start, "\r\n");
 
         while (dir_page >= dir_page_start && *dir_page == 0xff) { dir_page--; }
         if (dir_page < dir_page_start) {
@@ -84,10 +81,10 @@ uint64_t alloc_page(uint64_t *bitmap_dir) {
         allocated = dir_idx * (PAGE_SIZE * 8) + (dir_byte * 8) + dir_bit;
         *dir_page |= (1 << dir_bit);
     }
-    
-    write_con(&c, "alloc page ", allocated, "\r\n");
-    
-    return allocated * PAGE_SIZE;
+
+    uint64_t result = allocated * PAGE_SIZE;
+    memset((void*)result, 0, PAGE_SIZE);
+    return result;
 }
 
 #define RWXKERNEL 3
@@ -100,7 +97,6 @@ const uint64_t PML3_DIV = 1ll << PML3_SHIFT;
 const uint64_t PML2_DIV = 1ll << PML2_SHIFT;
 
 uint64_t map_page(uint64_t pml4, uint64_t *bitmap_dir, uint64_t addr) {
-    uint64_t page = alloc_page(bitmap_dir);
     uint64_t *pml4_ptr = (uint64_t*)pml4;
     int pml4_entry = (addr / PML4_DIV) % 512;
     if (!pml4_ptr[pml4_entry]) {
@@ -120,6 +116,30 @@ uint64_t map_page(uint64_t pml4, uint64_t *bitmap_dir, uint64_t addr) {
     int pml1_entry = (addr / PAGE_SIZE) % 512;
     if (!pml1_ptr[pml1_entry]) {
         pml1_ptr[pml1_entry] = addr | RWXKERNEL;
+    }
+    return PAGE_ADDR(pml1_ptr[pml1_entry]);
+}
+
+uint64_t map_alloc_page(uint64_t pml4, uint64_t *bitmap_dir, uint64_t addr) {
+    uint64_t *pml4_ptr = (uint64_t*)pml4;
+    int pml4_entry = (addr / PML4_DIV) % 512;
+    if (!pml4_ptr[pml4_entry]) {
+        pml4_ptr[pml4_entry] = alloc_page(bitmap_dir) | RWXKERNEL;
+    }
+    uint64_t *pml3_ptr = (uint64_t *)PAGE_ADDR(pml4_ptr[pml4_entry]);
+    int pml3_entry = (addr / PML3_DIV) % 512;
+    if (!pml3_ptr[pml3_entry]) {
+        pml3_ptr[pml3_entry] = alloc_page(bitmap_dir) | RWXKERNEL;
+    }
+    uint64_t *pml2_ptr = (uint64_t *)PAGE_ADDR(pml3_ptr[pml3_entry]);
+    int pml2_entry = (addr / PML2_DIV) % 512;
+    if (!pml2_ptr[pml2_entry]) {
+        pml2_ptr[pml2_entry] = alloc_page(bitmap_dir) | RWXKERNEL;
+    }
+    uint64_t *pml1_ptr = (uint64_t *)PAGE_ADDR(pml2_ptr[pml2_entry]);
+    int pml1_entry = (addr / PAGE_SIZE) % 512;
+    if (!pml1_ptr[pml1_entry]) {
+        pml1_ptr[pml1_entry] = alloc_page(bitmap_dir) | RWXKERNEL;
     }
     return PAGE_ADDR(pml1_ptr[pml1_entry]);
 }
@@ -252,73 +272,6 @@ int main(int argc, char **argv) {
     write_con(&c, "&continue_64 ", &continue_64, "\r\n");
 
     mod_64 mod64 = { };
-    mod64.entry[4] = mod64.entry[8] = 8;
-
-    if (bootinfo->flags & MODS_FLAG) {
-        mb_mod *mods = (mb_mod*)bootinfo->mods_addr;
-        for (int i = 0; i < bootinfo->mods_count; i++) {
-            write_con
-                (&c,
-                 "mod ",
-                 mods[i].mod_start, "-", mods[i].mod_end,
-                 " -- ",
-                 (const char *)mods[i].mod_args,
-                 "\r\n");
-            
-            Elf64_Ehdr *ehdr = (Elf64_Ehdr*)mods[i].mod_start;
-
-            write_con(&c, "ehdr @", ehdr, "\r\n");
-
-            if (ehdr->e_type != ET_EXEC) {
-                halt("Kernel not executable");
-            }
-            
-            uint64_t entryPointVaddr = ehdr->e_entry;
-            write_con(&c, "#phdr ", ehdr->e_phnum, "\r\n");
-
-            for (int j = 0; j < ehdr->e_phnum; j++) {
-                uint32_t phdrAddr = mods[i].mod_start + ehdr->e_phoff + ehdr->e_phentsize * j;
-                Elf64_Phdr *phdr = (Elf64_Phdr*)phdrAddr;
-                write_con(&c, "phdr @", phdr, "\r\n");
-                write_con
-                    (&c, "phdr ", phdr->p_type,
-                     " vaddr ", phdr->p_vaddr, " memsz ", phdr->p_memsz, "\r\n");
-                if (phdr->p_vaddr <= entryPointVaddr &&
-                    phdr->p_vaddr + phdr->p_memsz > entryPointVaddr &&
-                    phdr->p_type == PT_LOAD) {
-                    mod64.pentry = 
-                        mods[i].mod_start +
-                        phdr->p_paddr + (entryPointVaddr - phdr->p_vaddr);
-                    mod64.start = mods[i].mod_start;
-                    mod64.length = mods[i].mod_end - mods[i].mod_start;
-                        break;
-                }
-            }
-        }
-    }
-
-    if (!mod64.start || !mod64.length) {
-        halt("Could not find kernel module");
-    }
-
-    // Find a boot slab area
-    for (int i = 0; i < mmap_current; i++) {
-        uint32_t max_needed_address = max(mmap_entries[i].mmap_addr, MEGABYTE) + mod64.length;
-        if (mmap_entries[i].mmap_addr + mmap_entries[i].mmap_len >= max_needed_address) {
-            mod64.mstart = mmap_entries[i].mmap_addr;
-            mod64.pentry = mod64.pentry - mod64.start + mod64.mstart;
-            write_con
-                (&c,
-                 "use memory at ", mmap_entries[i].mmap_addr, " start ",
-                 mod64.pentry, "\r\n");
-            memcpy(mod64.entry, &mod64.start, sizeof(mod64.start));
-            memcpy((void*)mmap_entries[i].mmap_addr, (void*)mod64.start, mod64.length);
-        }
-    }
-    
-    if (!mod64.start) {
-        halt("Could not find entry point in any PT_LOAD program header");
-    }
 
     // We have all the ranges we need, start taking over...
     uint32_t start = (uint32_t)&_start;
@@ -381,19 +334,75 @@ int main(int argc, char **argv) {
     for (uint32_t addr = 0; addr < MEGABYTE; addr += PAGE_SIZE) {
         map_page(pml4, bitmap_dir, addr);
     }
-    
-    // Map the kernel space we set aside
-    for (uint32_t kernel_addr = mod64.start;
-         kernel_addr < mod64.start + mod64.length;
-         kernel_addr += PAGE_SIZE) {
-        map_page(pml4, bitmap_dir, kernel_addr);
-    }
-    
+        
     // Map the old boot program
     for (uint32_t boot_addr = PAGE_ADDR(start);
          boot_addr < end;
          boot_addr += PAGE_SIZE) {
         map_page(pml4, bitmap_dir, boot_addr);
+    }
+
+    if (!(bootinfo->flags & MODS_FLAG)) {
+        halt("No mods");
+    }
+
+    mb_mod *mods = (mb_mod*)bootinfo->mods_addr;
+    for (int i = 0; i < bootinfo->mods_count; i++) {
+        write_con
+            (&c,
+             "mod ",
+             mods[i].mod_start, "-", mods[i].mod_end,
+             " -- ",
+             (const char *)mods[i].mod_args,
+             "\r\n");
+        
+        Elf64_Ehdr *ehdr = (Elf64_Ehdr*)mods[i].mod_start;
+        
+        write_con(&c, "ehdr @", ehdr, "\r\n");
+        
+        if (ehdr->e_type != ET_EXEC) {
+            halt("Kernel not executable");
+        }
+        
+        uint64_t entryPointVaddr = ehdr->e_entry;
+        mod64.pentry = entryPointVaddr + KERNEL_ADDR;
+        mod64.entry = mod64.pentry;
+        mod64.entryseg = 8;
+        
+        write_con(&c, "#phdr ", ehdr->e_phnum, "\r\n");
+
+        for (int j = 0; j < ehdr->e_phnum; j++) {
+            uint32_t phdrAddr = mods[i].mod_start + ehdr->e_phoff + ehdr->e_phentsize * j;
+            Elf64_Phdr *phdr = (Elf64_Phdr*)phdrAddr;
+            write_con(&c, "phdr @", phdr, "\r\n");
+            write_con
+                (&c, "phdr ", phdr->p_type,
+                 " vaddr ", phdr->p_vaddr, " memsz ", phdr->p_memsz, "\r\n");
+            if (phdr->p_type == PT_LOAD) {
+                uint64_t loadAddr = phdr->p_vaddr + KERNEL_ADDR;
+                uint64_t modCopy = mods[i].mod_start + phdr->p_offset;
+                uint64_t modEnd = modCopy + phdr->p_filesz;
+
+                // Copy load segments into place.
+                while (modCopy < modEnd) {
+                    write_con(&c, "modCopy ", modCopy, " modEnd ", modEnd, "\r\n");
+                    uint64_t copyToPage = map_alloc_page(pml4, bitmap_dir, loadAddr);
+                    write_con(&c, "alloc ", copyToPage, " for ", loadAddr, "\r\n");
+                    uint64_t copyBytes = min(modEnd - modCopy, PAGE_SIZE);
+                    memcpy((void*)copyToPage, (void*)modCopy, copyBytes);
+                    loadAddr += PAGE_SIZE;
+                    modCopy += PAGE_SIZE;
+                }
+            }
+        }
+    }
+
+    // We'll put 64k below kernel space for the stack
+    mod64.stlen = 0x10000;
+    mod64.stack = KERNEL_ADDR - mod64.stlen;
+
+    for (uint64_t i = mod64.stack; i < mod64.stack + mod64.stlen; i += PAGE_SIZE) {
+        map_alloc_page(pml4, bitmap_dir, i);
     }
 
     mod64.alloc_bitmap = bitmap_dir_page;
