@@ -12,4 +12,7 @@ _start:
     mov rax, 0x1F201F201F201F20   // Set the A-register to 0x1F201F201F201F20.
     mov ecx, 500                  // Set the C-register to 500.
     rep stosq                     // Clear the screen.
+    mov rax, 0x1f481f4c1f541f33   // Set the A-register to a short message
+    mov edi, 0xB8000              // Write it to the first space on the display
+    mov [edi], rax                // Pop
     hlt                           // Halt the processor.

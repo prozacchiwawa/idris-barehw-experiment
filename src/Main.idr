@@ -1,14 +1,13 @@
-import CpuID
+import Arch.X86_64
 
 runLoop : Int -> IO ()
-runLoop n = do
-  cpuid <- has_cpuid 0
-  extfun <- has_extfun 0
-  longmode <- has_longmode 0
-  putStrLn $ "Tick " ++ (show cpuid) ++ "," ++ (show n) ++ "," ++ (show extfun) ++ "," ++ (show longmode)
-  x <- getLine
-  runLoop (n + cast (Strings.length x))
+runLoop n = 
+  do
+    let cr3 = 0 -- <- getCR3 ()
+    putStrLn $ "Tick " ++ (show n) ++ " " ++ (show cr3)
+    runLoop (n + 1)
 
 main : IO ()
-main = do
-  runLoop 1
+main = 
+  do
+    runLoop 1

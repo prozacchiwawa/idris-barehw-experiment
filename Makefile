@@ -1,4 +1,4 @@
-CC=clang -ffreestanding -nostdinc -nostdlib -target x86_64-elf -fPIC -isystem newlib/newlib/libc/include -isystem include
+CC=clang -m64 -static -Wl,-Tboot/i386/kernel.lds -Wl,-N -g -fPIC -ffreestanding -nostdinc -nostdlib -target x86_64-elf -fPIC -isystem newlib/newlib/libc/include -isystem include
 COPTS=\
 	-Irts \
 	-DIDRIS_TARGET_OS='"IdrOS"' \
@@ -7,9 +7,7 @@ LIBS=-L. -lrts -Lnewlib/newlib -lc -lm -lrts
 
 OBJS= \
 	$(patsubst rts/%.c,rts/%.o,$(wildcard rts/*.c)) \
-	$(patsubst lib/%.c,lib/%.o,$(wildcard lib/*.c)) \
-	$(patsubst lib/arch/%.s,lib/arch/%.o,$(wildcard lib/arch/*.s)) \
-	$(patsubst lib/arch/%.c,lib/arch/%.o,$(wildcard lib/arch/*.c))
+	$(patsubst lib/%.c,lib/%.o,$(wildcard lib/*.c))
 
 .s.o:
 	$(CC) -g -c -o $@ $(COPTS) $<
@@ -37,5 +35,8 @@ librts.a: $(OBJS)
 main.c: src/*.idr
 	idris -i src -S -o main.c src/Main.idr
 
-kernel.elf: main.o librts.a newlib/newlib/libc.a
-	$(CC) -g -o $@ main.o $(LIBS)
+start.o: src/Arch/startamd64.s
+	$(CC) -g -c -o $@ $(COPTS) $<
+
+kernel.elf: start.o main.o librts.a newlib/newlib/libc.a
+	$(CC) -g -o $@ start.o main.o $(LIBS)

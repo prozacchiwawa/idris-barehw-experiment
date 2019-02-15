@@ -27,6 +27,7 @@ go64: // Fastcall, struct is at ecx
 
     // Preload the jump address
     lea ebx, dword ptr [ecx + 32]
+
     // New Stack Start
     mov edx, dword ptr [ecx + 12]
     add edx, dword ptr [ecx + 16]
@@ -56,6 +57,7 @@ go64: // Fastcall, struct is at ecx
     lgdt [.Pointer]              // Load the 64-bit global descriptor table.
 
     mov esp, edx                 // Load the new stack
+    lea ecx, [ebx - 32]          // Load the address of the full struct into ecx
 
     ljmp [ebx]                   // Set the code segment and enter 64-bit long mode.
 

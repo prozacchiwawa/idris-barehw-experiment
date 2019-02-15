@@ -9,7 +9,7 @@
 #define MEGABYTE (1024 * 1024)
 #define APIC 0xfee00000
 #define PAGE_SIZE 4096
-#define KERNEL_ADDR (8 * MEGABYTE)
+#define KERNEL_ADDR (1 * MEGABYTE)
 
 uint32_t min(uint32_t a, uint32_t b) {
     return a < b ? a : b;
@@ -208,8 +208,11 @@ uint64_t *setup_bitmap_dir(mb_mmap *mmap_entries, int mmap_current, uint64_t bit
     return (uint64_t *)bitmap_dir;
 }
 
+int _debug = 0;
 
 int main(int argc, char **argv) {
+    while (_debug);
+
     enable_sse();
     
     int mmap_current = 0;
@@ -365,7 +368,7 @@ int main(int argc, char **argv) {
         }
         
         uint64_t entryPointVaddr = ehdr->e_entry;
-        mod64.pentry = entryPointVaddr + KERNEL_ADDR;
+        mod64.pentry = entryPointVaddr;
         mod64.entry = mod64.pentry;
         mod64.entryseg = 8;
         
@@ -379,27 +382,27 @@ int main(int argc, char **argv) {
                 (&c, "phdr ", phdr->p_type,
                  " vaddr ", phdr->p_vaddr, " memsz ", phdr->p_memsz, "\r\n");
             if (phdr->p_type == PT_LOAD) {
-                uint64_t loadAddr = phdr->p_vaddr + KERNEL_ADDR;
+                uint64_t loadAddr = phdr->p_vaddr;
                 uint64_t modCopy = mods[i].mod_start + phdr->p_offset;
                 uint64_t modEnd = modCopy + phdr->p_filesz;
 
                 // Copy load segments into place.
                 while (modCopy < modEnd) {
-                    write_con(&c, "modCopy ", modCopy, " modEnd ", modEnd, "\r\n");
                     uint64_t copyToPage = map_alloc_page(pml4, bitmap_dir, loadAddr);
-                    write_con(&c, "alloc ", copyToPage, " for ", loadAddr, "\r\n");
                     uint64_t copyBytes = min(modEnd - modCopy, PAGE_SIZE);
                     memcpy((void*)copyToPage, (void*)modCopy, copyBytes);
                     loadAddr += PAGE_SIZE;
                     modCopy += PAGE_SIZE;
                 }
+
+                break;
             }
         }
     }
 
     // We'll put 64k below kernel space for the stack
     mod64.stlen = 0x10000;
-    mod64.stack = KERNEL_ADDR - mod64.stlen;
+    mod64.stack = mod64.stlen;
 
     for (uint64_t i = mod64.stack; i < mod64.stack + mod64.stlen; i += PAGE_SIZE) {
         map_alloc_page(pml4, bitmap_dir, i);
