@@ -385,12 +385,20 @@ int main(int argc, char **argv) {
                 uint64_t loadAddr = phdr->p_vaddr;
                 uint64_t modCopy = mods[i].mod_start + phdr->p_offset;
                 uint64_t modEnd = modCopy + phdr->p_filesz;
+                uint64_t zeroEnd = modCopy + phdr->p_memsz;
 
                 // Copy load segments into place.
                 while (modCopy < modEnd) {
                     uint64_t copyToPage = map_alloc_page(pml4, bitmap_dir, loadAddr);
                     uint64_t copyBytes = min(modEnd - modCopy, PAGE_SIZE);
                     memcpy((void*)copyToPage, (void*)modCopy, copyBytes);
+                    loadAddr += PAGE_SIZE;
+                    modCopy += PAGE_SIZE;
+                }
+
+                // Trailing zero pages for bss.
+                while (modCopy < zeroEnd) {
+                    uint64_t copyToPage = map_alloc_page(pml4, bitmap_dir, loadAddr);
                     loadAddr += PAGE_SIZE;
                     modCopy += PAGE_SIZE;
                 }

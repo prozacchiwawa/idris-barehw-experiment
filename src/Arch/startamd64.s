@@ -9,10 +9,7 @@ _start:
     mov rsp, 0xfff0
     xor rdi, rdi
     inc rdi
-    lea rsi, argv_str
-    lea rax, argv_
-    push rsi
-    push rdi
+    lea rsi, argv_
     call main
 
 argv_str:
