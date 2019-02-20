@@ -209,6 +209,7 @@ uint64_t *setup_bitmap_dir(mb_mmap *mmap_entries, int mmap_current, uint64_t bit
 }
 
 int _debug = 0;
+const char *hexcvt = "0123456789abcdef";
 
 int main(int argc, char **argv) {
     while (_debug);
@@ -426,6 +427,15 @@ int main(int argc, char **argv) {
     while (!continue_64) {
         ct++;
     }
+
+    // Write the mod64 address into an argument.
+    uint32_t mod64_addr = (uint32_t)&mod64;
+    char *argptr = mod64.self_arg;
+    for (int i = 0; i < 8; i++) {
+        argptr[i] = hexcvt[((mod64_addr >> 28) & 15)];
+        mod64_addr <<= 4;
+    }
+    argptr[8] = 0;
     
     go64(&mod64);
     halt("Didn't boot");

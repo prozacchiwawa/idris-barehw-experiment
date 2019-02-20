@@ -11,6 +11,7 @@ typedef struct _mod_64 {
     uint64_t alloc_bitmap;
     uint32_t entry;
     uint32_t entryseg;
+    char self_arg[32];
 } mod_64;
 
 extern "C" void __fastcall go64(mod_64 *mod64);

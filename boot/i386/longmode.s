@@ -20,7 +20,9 @@ NoLongmode:
     ret
 
     .globl go64
-go64: // Fastcall, struct is at ecx    
+go64: // Fastcall, struct is at ecx
+    // We're not using EDI, put the struct ptr in there
+    mov edi, ecx
     mov eax, cr0                                   // Set the A-register to control register 0.
     and eax, 01111111111111111111111111111111b     // Clear the PG-bit, which is bit 31.
     mov cr0, eax                                   // Set control register 0 to the A-register.
@@ -59,6 +61,7 @@ go64: // Fastcall, struct is at ecx
     mov esp, edx                 // Load the new stack
     lea ecx, [ebx - 32]          // Load the address of the full struct into ecx
 
+    lea edi, [edi + 40]          // Give the argument to the 64-bit process
     ljmp [ebx]                   // Set the code segment and enter 64-bit long mode.
 
 GDT64:                           // Global Descriptor Table (64-bit).
