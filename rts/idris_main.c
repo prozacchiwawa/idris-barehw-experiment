@@ -34,9 +34,15 @@ int win32_get_argv_utf8(int *argc_ptr, char ***argv_ptr)
 
 // The default options should give satisfactory results under many circumstances.
 RTSOpts opts = {
+#ifdef IDRIS_BAREHW
+    .init_heap_size = 3 * 1024 * 1024 / 2,
+    .max_stack_size = 128 * 1024,
+    .show_summary   = 1
+#else
     .init_heap_size = 16384000,
     .max_stack_size = 4096000,
     .show_summary   = 0
+#endif
 };
 
 #ifdef _WIN32

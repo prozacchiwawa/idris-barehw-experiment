@@ -96,6 +96,25 @@ const uint64_t PML4_DIV = 1ll << PML4_SHIFT;
 const uint64_t PML3_DIV = 1ll << PML3_SHIFT;
 const uint64_t PML2_DIV = 1ll << PML2_SHIFT;
 
+uint64_t get_page_table(uint64_t pml4, uint64_t *bitmap_dir, uint64_t addr) {
+    uint64_t *pml4_ptr = (uint64_t*)pml4;
+    int pml4_entry = (addr / PML4_DIV) % 512;
+    if (!pml4_ptr[pml4_entry]) {
+        pml4_ptr[pml4_entry] = alloc_page(bitmap_dir) | RWXKERNEL;
+    }
+    uint64_t *pml3_ptr = (uint64_t *)PAGE_ADDR(pml4_ptr[pml4_entry]);
+    int pml3_entry = (addr / PML3_DIV) % 512;
+    if (!pml3_ptr[pml3_entry]) {
+        pml3_ptr[pml3_entry] = alloc_page(bitmap_dir) | RWXKERNEL;
+    }
+    uint64_t *pml2_ptr = (uint64_t *)PAGE_ADDR(pml3_ptr[pml3_entry]);
+    int pml2_entry = (addr / PML2_DIV) % 512;
+    if (!pml2_ptr[pml2_entry]) {
+        pml2_ptr[pml2_entry] = alloc_page(bitmap_dir) | RWXKERNEL;
+    }
+    return PAGE_ADDR(pml2_ptr[pml2_entry]);
+}
+
 uint64_t map_page(uint64_t pml4, uint64_t *bitmap_dir, uint64_t addr) {
     uint64_t *pml4_ptr = (uint64_t*)pml4;
     int pml4_entry = (addr / PML4_DIV) % 512;
@@ -408,6 +427,11 @@ int main(int argc, char **argv) {
             }
         }
     }
+
+    // Map the last page in the address space to its own page table so we can
+    // use it to focus any page we want.
+    uint64_t pagetable = get_page_table(pml4, bitmap_dir, 0xfffffffffffff000ull);
+    map_page(pagetable, bitmap_dir, 0xfffffffffffff000ull);
 
     // We'll put 64k below kernel space for the stack
     mod64.stlen = 0x10000;

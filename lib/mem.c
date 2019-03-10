@@ -2,7 +2,7 @@
 #include <string.h>
 #include <malloc.h>
 
-#define HEAP_SIZE 1 * 1024 * 1024
+#define HEAP_SIZE 3 * 1024 * 1024
 char heap[HEAP_SIZE];
 char *heap_ptr = heap;
 

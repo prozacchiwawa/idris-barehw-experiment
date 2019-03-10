@@ -39,3 +39,15 @@ getCR3 =
 setCR3 : Bits64 -> IO ()
 setCR3 v =
   foreign FFI_C "setCR3" (Bits64 -> IO ()) v
+
+{- Create a temporary page mapping at vaddr referring to paddr -}
+createTempPageMapping : Bits64 -> Bits64 -> IO ()
+createTempPageMapping vaddr paddr =
+  foreign FFI_C "createTempPageMapping" (Bits64 -> Bits64 -> IO ())
+
+{- Zero the mapping.  We'll want to require proof that a mapping
+ - has been erased before it's resued.
+ -}
+eraseTempPageMapping : Bits64 -> IO ()
+eraseTempPageMapping vaddr =
+  foreign FFI_C "eraseTempPageMapping" (bits64 -> IO ())

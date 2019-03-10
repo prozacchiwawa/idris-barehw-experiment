@@ -2,7 +2,8 @@ CC=clang -m64 -static -Wl,-Tboot/i386/kernel.lds -Wl,-N -g -fPIC -ffreestanding 
 COPTS=\
 	-Irts \
 	-DIDRIS_TARGET_OS='"IdrOS"' \
-	-DIDRIS_TARGET_TRIPLE='"x86_64-unknown-IdrOS"'
+	-DIDRIS_TARGET_TRIPLE='"x86_64-unknown-IdrOS"' \
+	-DIDRIS_BAREHW=1
 LIBS=-L. -lrts -Lnewlib/newlib -lc -lm -lrts
 
 OBJS= \
