@@ -10,6 +10,11 @@ OBJS= \
 	$(patsubst rts/%.c,rts/%.o,$(wildcard rts/*.c)) \
 	$(patsubst lib/%.c,lib/%.o,$(wildcard lib/*.c))
 
+KOBJS= \
+	main.o \
+	$(patsubst src/Sys/%.c,src/Sys/%.o,$(wildcard src/Sys/*.c)) \
+	$(patsubst src/Arch/%.s,src/Arch/%.o,$(wildcard src/Arch/*.s))
+
 .s.o:
 	$(CC) -g -c -o $@ $(COPTS) $<
 
@@ -25,6 +30,9 @@ newlib/newlib/libc.a:
 	cd newlib/newlib && CC="clang -isystem `pwd`/include -isystem `pwd`/../../include -ffreestanding -nostdinc -nostdlib -target x86_64-elf -fPIC" ./configure --target=x86_64-elf
 	make -C newlib/newlib
 
+test:
+	echo $(KOBJS)
+
 clean:
 	rm -rf *.o rts/*.o lib/*.o *.a
 
@@ -36,8 +44,5 @@ librts.a: $(OBJS)
 main.c: src/*.idr
 	idris -i src -S -o main.c src/Main.idr
 
-start.o: src/Arch/startamd64.s
-	$(CC) -g -c -o $@ $(COPTS) $<
-
-kernel.elf: start.o main.o librts.a newlib/newlib/libc.a
-	$(CC) -g -o $@ start.o main.o $(LIBS)
+kernel.elf: $(KOBJS) librts.a newlib/newlib/libc.a
+	$(CC) -g -o $@ $(KOBJS) $(LIBS)
