@@ -14,6 +14,16 @@ _start:
     lea rsi, argv_
     call main
 
+    .globl getCommandLineArgPtr
+getCommandLineArgPtr:
+    mov rax, rdi
+    mov rdx, 8
+    mul rdx
+    lea rsi, qword ptr [argv_]
+    add rsi, rax
+    mov rax, qword ptr [rsi]
+    ret
+    
 argv_str:
     .ascii "kernel"
     .byte 0

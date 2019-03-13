@@ -36,7 +36,7 @@ int win32_get_argv_utf8(int *argc_ptr, char ***argv_ptr)
 RTSOpts opts = {
 #ifdef IDRIS_BAREHW
     .init_heap_size = 3 * 1024 * 1024 / 2,
-    .max_stack_size = 128 * 1024,
+    .max_stack_size = 60 * 1024,
     .show_summary   = 1
 #else
     .init_heap_size = 16384000,
