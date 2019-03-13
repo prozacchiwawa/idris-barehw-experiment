@@ -146,13 +146,9 @@ createTempPageMapping : Bits64 -> Bits64 -> IO ()
 createTempPageMapping vaddr paddr = 
   do
     let entry = getIntEntry vaddr
-    putStrLn $ "Entry " ++ (show entry)
     let offset = 8 * entry
-    putStrLn $ "Offset " ++ (show offset)
     let entryAddr = lastPageTablePtr + (cast offset)
-    putStrLn $ "EntryAddr " ++ (show entryAddr)
     let writeEntry = prim__orB64 paddr (cast 3)
-    putStrLn $ "WriteEntry " ++ (show writeEntry)
     poke64 entryAddr writeEntry
     invlpg vaddr
   where
