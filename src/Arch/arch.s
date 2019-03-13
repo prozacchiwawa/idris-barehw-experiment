@@ -38,3 +38,23 @@ peek8:
     xor rax, rax
     mov al, byte ptr [rdi]
     ret
+
+    .globl poke16
+poke16:
+    mov word ptr [rdi], si
+    ret
+
+    .globl peek64
+peek64:
+    mov rax, qword ptr [rdi]
+    ret
+
+    .globl poke64
+poke64:
+    mov qword ptr [rdi], rsi
+    ret
+    
+    .globl invlpg
+invlpg:
+    invlpg byte ptr [rdi]
+    ret

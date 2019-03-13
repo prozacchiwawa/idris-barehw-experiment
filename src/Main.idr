@@ -18,5 +18,8 @@ main =
     ioSetup ()
     strs <- readCommandLine 0
     putStrLn (show strs)
+    putStrLn $ "First Hyperspace Addr " ++ (show firstHyperspaceAddr)
+    createTempPageMapping firstHyperspaceAddr (cast 0xb8000)
+    poke16 (firstHyperspaceAddr + 640) (cast 0xffff)
     halt ()
     runLoop 1

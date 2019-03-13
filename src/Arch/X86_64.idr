@@ -45,6 +45,22 @@ implementation Cast Bits8 Int where
   cast = prim__zextB8_Int
 
 public export
+implementation Cast Integer Bits64 where
+  cast = prim__truncBigInt_B64
+
+public export
+implementation Cast Bits64 Int where
+  cast = prim__truncB64_Int
+
+public export
+implementation Cast Int Bits64 where
+  cast = prim__truncInt_B64
+
+public export 
+implementation Cast Integer Bits16 where
+  cast = prim__truncBigInt_B16
+
+public export
 getCommandLineArgPtr : Int -> IO Bits64
 getCommandLineArgPtr n =
   foreign FFI_C "getCommandLineArgPtr" (Int -> IO Bits64) n
@@ -110,12 +126,40 @@ public export
 lgdt : Bits64 -> IO ()
 lgdt v =
   foreign FFI_C "lgdt" (Bits64 -> IO ()) v
-  
+
+public export
+lastPageTablePtr : Bits64
+lastPageTablePtr = cast 0xfffffffffffff000
+
+public export
+firstHyperspaceAddr : Bits64
+firstHyperspaceAddr = prim__xorB64 (cast 0xffffffffffffffff) (cast 0x1fffff)
+                                    
+public export
+invlpg : Bits64 -> IO ()
+invlpg v =
+  foreign FFI_C "invlpg" (Bits64 -> IO ()) v
+
 {- Create a temporary page mapping at vaddr referring to paddr -}
 public export
 createTempPageMapping : Bits64 -> Bits64 -> IO ()
-createTempPageMapping vaddr paddr =
-  foreign FFI_C "createTempPageMapping" (Bits64 -> Bits64 -> IO ()) vaddr paddr
+createTempPageMapping vaddr paddr = 
+  do
+    let entry = getIntEntry vaddr
+    putStrLn $ "Entry " ++ (show entry)
+    let offset = 8 * entry
+    putStrLn $ "Offset " ++ (show offset)
+    let entryAddr = lastPageTablePtr + (cast offset)
+    putStrLn $ "EntryAddr " ++ (show entryAddr)
+    let writeEntry = prim__orB64 paddr (cast 3)
+    putStrLn $ "WriteEntry " ++ (show writeEntry)
+    poke64 entryAddr writeEntry
+    invlpg vaddr
+  where
+    getIntEntry : Bits64 -> Int
+    getIntEntry vaddr = 
+      cast (prim__udivB64 (prim__andB64 vaddr 0x1fffff) 4096)
+  
 
 {- Zero the mapping.  We'll want to require proof that a mapping
  - has been erased before it's resued.

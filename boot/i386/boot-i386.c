@@ -115,28 +115,32 @@ uint64_t get_page_table(uint64_t pml4, uint64_t *bitmap_dir, uint64_t addr) {
     return PAGE_ADDR(pml2_ptr[pml2_entry]);
 }
 
-uint64_t map_page(uint64_t pml4, uint64_t *bitmap_dir, uint64_t addr) {
+uint64_t map_page_at(uint64_t pml4, uint64_t *bitmap_dir, uint64_t paddr, uint64_t vaddr) {
     uint64_t *pml4_ptr = (uint64_t*)pml4;
-    int pml4_entry = (addr / PML4_DIV) % 512;
+    int pml4_entry = (vaddr / PML4_DIV) % 512;
     if (!pml4_ptr[pml4_entry]) {
         pml4_ptr[pml4_entry] = alloc_page(bitmap_dir) | RWXKERNEL;
     }
     uint64_t *pml3_ptr = (uint64_t *)PAGE_ADDR(pml4_ptr[pml4_entry]);
-    int pml3_entry = (addr / PML3_DIV) % 512;
+    int pml3_entry = (vaddr / PML3_DIV) % 512;
     if (!pml3_ptr[pml3_entry]) {
         pml3_ptr[pml3_entry] = alloc_page(bitmap_dir) | RWXKERNEL;
     }
     uint64_t *pml2_ptr = (uint64_t *)PAGE_ADDR(pml3_ptr[pml3_entry]);
-    int pml2_entry = (addr / PML2_DIV) % 512;
+    int pml2_entry = (vaddr / PML2_DIV) % 512;
     if (!pml2_ptr[pml2_entry]) {
         pml2_ptr[pml2_entry] = alloc_page(bitmap_dir) | RWXKERNEL;
     }
     uint64_t *pml1_ptr = (uint64_t *)PAGE_ADDR(pml2_ptr[pml2_entry]);
-    int pml1_entry = (addr / PAGE_SIZE) % 512;
+    int pml1_entry = (vaddr / PAGE_SIZE) % 512;
     if (!pml1_ptr[pml1_entry]) {
-        pml1_ptr[pml1_entry] = addr | RWXKERNEL;
+        pml1_ptr[pml1_entry] = paddr | RWXKERNEL;
     }
     return PAGE_ADDR(pml1_ptr[pml1_entry]);
+}
+
+uint64_t map_page(uint64_t pml4, uint64_t *bitmap_dir, uint64_t addr) {
+    return map_page_at(pml4, bitmap_dir, addr, addr);
 }
 
 uint64_t map_alloc_page(uint64_t pml4, uint64_t *bitmap_dir, uint64_t addr) {
@@ -431,7 +435,7 @@ int main(int argc, char **argv) {
     // Map the last page in the address space to its own page table so we can
     // use it to focus any page we want.
     uint64_t pagetable = get_page_table(pml4, bitmap_dir, 0xfffffffffffff000ull);
-    map_page(pagetable, bitmap_dir, 0xfffffffffffff000ull);
+    map_page_at(pml4, bitmap_dir, pagetable, 0xfffffffffffff000ull);
 
     // We'll put 64k below kernel space for the stack
     mod64.stlen = 0x10000;
